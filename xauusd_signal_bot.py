@@ -6,12 +6,13 @@ XAUUSD PRO SIGNAL BOT
 - Full indicators: EMA, RSI, MACD, BB
 - Candlestick pattern detection
 - Support/Resistance levels
-- Gemini AI analysis (FREE)
+- Groq AI analysis (FREE)
 - Signal: BUY/SELL + Entry + SL + TP
 - Telegram notifications
 - Every 15 minutes
 """
 
+import os
 import requests
 import json
 import time
@@ -27,12 +28,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class XAUUSDSignalBot:
-    def __init__(self, twelve_key, gemini_key, telegram_token, chat_id):
+    def __init__(self, twelve_key, groq_key, telegram_token, chat_id):
         self.twelve_key = twelve_key
-        self.gemini_key = gemini_key
+        self.groq_key = groq_key
         self.telegram_token = telegram_token
         self.chat_id = chat_id
-        self.gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+        self.groq_url = "https://api.groq.com/openai/v1/chat/completions"
+        self.groq_model = "llama-3.3-70b-versatile"
         self.twelve_url = "https://api.twelvedata.com"
         self.wib = pytz.timezone('Asia/Jakarta')
         self.last_signal = None
@@ -164,10 +166,10 @@ class XAUUSDSignalBot:
         except:
             return "Unknown"
 
-    def analyze_with_gemini(self, market_data):
-        """Send all data to Gemini AI for analysis"""
+    def analyze_with_groq(self, market_data):
+        """Send all data to Groq AI for analysis"""
         try:
-            logger.info("🤖 Gemini AI analyzing XAUUSD chart data...")
+            logger.info("🤖 Groq AI analyzing XAUUSD chart data...")
 
             prompt = f"""You are a professional XAUUSD (Gold/USD) trader with 20 years experience.
 Analyze the following REAL-TIME chart data and provide a trading signal.
@@ -231,19 +233,24 @@ IMPORTANT RULES:
 Respond ONLY in this exact JSON:
 {{"action": "BUY/SELL/WAIT", "confidence": 0-100, "entry": price, "sl": price, "tp": price, "rr": "1:X", "trend": "BULLISH/BEARISH/NEUTRAL", "pattern_signal": "brief", "reason": "max 30 words analysis"}}"""
 
+            headers = {
+                "Authorization": f"Bearer {self.groq_key}",
+                "Content-Type": "application/json"
+            }
             payload = {
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {
-                    "temperature": 0.2,
-                    "maxOutputTokens": 300
-                }
+                "model": self.groq_model,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.2,
+                "max_tokens": 300
             }
 
-            response = requests.post(self.gemini_url, json=payload, timeout=30)
+            response = requests.post(self.groq_url, headers=headers, json=payload, timeout=30)
 
             if response.status_code == 200:
                 result = response.json()
-                content = result['candidates'][0]['content']['parts'][0]['text']
+                content = result['choices'][0]['message']['content']
 
                 # Clean JSON
                 if "```" in content:
@@ -257,11 +264,11 @@ Respond ONLY in this exact JSON:
                 return analysis
 
             else:
-                logger.error(f"Gemini error: {response.status_code}")
+                logger.error(f"Groq error: {response.status_code} - {response.text[:200]}")
                 return None
 
         except Exception as e:
-            logger.error(f"Gemini error: {e}")
+            logger.error(f"Groq error: {e}")
             return None
 
     def send_telegram(self, message):
@@ -366,8 +373,8 @@ Respond ONLY in this exact JSON:
                 "pattern": pattern
             }
 
-            # GEMINI AI ANALYSIS
-            analysis = self.analyze_with_gemini(market_data)
+            # GROQ AI ANALYSIS
+            analysis = self.analyze_with_groq(market_data)
             if not analysis:
                 return
 
@@ -463,7 +470,7 @@ Support: ${sr['support']:,.2f}
         logger.info("🥇 XAUUSD PRO SIGNAL BOT")
         logger.info("=" * 60)
         logger.info("📊 Data: Twelve Data (Realtime OHLCV)")
-        logger.info("🤖 AI: Google Gemini 1.5 Flash")
+        logger.info("🤖 AI: Groq (Llama 3.3 70B)")
         logger.info("⏱️  Interval: Every 15 minutes")
         logger.info("📈 Indicators: EMA 20/50/200, RSI, MACD")
         logger.info("🕯️  Patterns: Auto detection")
@@ -475,7 +482,7 @@ Support: ${sr['support']:,.2f}
 <b>🥇 XAUUSD PRO SIGNAL BOT STARTED!</b>
 
 Data: Twelve Data (Realtime)
-AI: Google Gemini 1.5
+AI: Groq (Llama 3.3 70B)
 Indicators: EMA 20/50/200 + RSI + MACD
 Patterns: Auto Detection
 Timeframe: H1 + H4
@@ -498,12 +505,12 @@ Interval: Every 15 minutes
                 time.sleep(60)
 
 def main():
-    TWELVE_KEY    = "9a0122845399415ab64545e3fee3fa5b"
-    GEMINI_KEY    = "AQ.Ab8RN6J5vczy5DoI9SZ_Nm8nZvBgTlu8q3f1XYxT4H1DcNVdwQ"
+    TWELVE_KEY     = "9a0122845399415ab64545e3fee3fa5b"
+    GROQ_KEY       = "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"
     TELEGRAM_TOKEN = "8681007582:AAGybLJ9vxn3C8UVyWJEcHD-qVGRq38VUgk"
-    CHAT_ID       = "5280470660"
+    CHAT_ID        = "5280470660"
 
-    bot = XAUUSDSignalBot(TWELVE_KEY, GEMINI_KEY, TELEGRAM_TOKEN, CHAT_ID)
+    bot = XAUUSDSignalBot(TWELVE_KEY, GROQ_KEY, TELEGRAM_TOKEN, CHAT_ID)
     bot.start()
 
 if __name__ == "__main__":
