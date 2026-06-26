@@ -734,7 +734,7 @@ Interval: Every 15 minutes
 
 def main():
     TWELVE_KEY     = "9a0122845399415ab64545e3fee3fa5b"
-    GROQ_KEY       = "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"
+    GROQ_KEY       = "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"
     TELEGRAM_TOKEN = "8681007582:AAGybLJ9vxn3C8UVyWJEcHD-qVGRq38VUgk"
     CHAT_ID        = "5280470660"
     bot = XAUUSDUltimateBot(TWELVE_KEY, GROQ_KEY, TELEGRAM_TOKEN, CHAT_ID)
